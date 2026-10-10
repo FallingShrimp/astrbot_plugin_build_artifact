@@ -72,17 +72,14 @@ class BuildingTask(BaseModel):
     caller_session: str
 
     async def run(self):
-        yield f"🔨 任务ID {self.id} 开始编译：{self.project.name}。"
+        yield "building"
         cwd = os.getcwd()
         os.chdir(self.project.path)
         try:
             await asyncio.create_subprocess_shell(self.project.build, shell=True)
         except Exception as e:
             logger.error(e)
-            yield f"💔 任务ID {self.id} 已失败，请检查控制台。"
-        yield f"🎯 任务ID {self.id} 编译成功。"
         if self.project.compress:
-            yield "📦 正在打包产物，请稍等..."
             fp = str(
                 StarTools.get_data_dir("astrbot_plugin_build_artifact")
                 / f"{self.id}.zip"
@@ -90,7 +87,6 @@ class BuildingTask(BaseModel):
             await util.compress(self.project.dist, fp)
             yield (fp, f"[{self.project.name}] {os.path.basename(fp)}")
         else:
-            yield f"📦 以下是 {self.id} 的产物："
             if os.path.isdir(self.project.dist):
                 for root, _, files in os.walk(self.project.dist):
                     for fn in files:
