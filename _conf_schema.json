@@ -7,6 +7,12 @@
                 "name": "触发构建",
                 "hint": "用户手动触发构建，将产物发送到群里",
                 "items": {
+                    "enable": {
+                        "type": "bool",
+                        "description": "启用",
+                        "hint": "未启用的任务无法被自动或手动调用",
+                        "default": true
+                    },
                     "name": {
                         "type": "string",
                         "description": "项目名称",
@@ -51,6 +57,12 @@
                 "name": "定时推送",
                 "hint": "服务器定时执行一次构建，自动推送到指定会话",
                 "items": {
+                    "enable": {
+                        "type": "bool",
+                        "description": "启用",
+                        "hint": "未启用的任务无法被自动或手动调用",
+                        "default": true
+                    },
                     "name": {
                         "type": "string",
                         "description": "项目名称",
@@ -86,8 +98,8 @@
                     "gap": {
                         "type": "float",
                         "description": "定时间隔",
-                        "hint": "毫秒数，从一次构建完成后开始计时",
-                        "default": 86400000
+                        "hint": "秒数，从一次构建完成后开始计时",
+                        "default": 86400
                     },
                     "session": {
                         "type": "string",
@@ -96,5 +108,22 @@
                 }
             }
         }
+    },
+    "allow_call_timer": {
+        "type": "bool",
+        "description": "是否允许定时推送任务被手动触发",
+        "default": false
+    },
+    "timer_gap": {
+        "type": "float",
+        "description": "定时推送任务的轮询间隔",
+        "hint": "秒数，从一次轮询结束后开始计时",
+        "default": 1
+    },
+    "eventloop_gap": {
+        "type": "float",
+        "description": "事件循环的轮询间隔",
+        "hint": "秒数，从一次查询结束后开始计时",
+        "default": 0.5
     }
 }

@@ -2,22 +2,40 @@ import asyncio
 import time
 import uuid
 
-from astrbot.api.all import AstrMessageEvent, Star
+from lib import util
+
+from astrbot.api.all import AstrMessageEvent, MessageChain, Star
 from astrbot.api.event import filter
-from astrbot.api.message_components import File
+from astrbot.api.message_components import File, Plain
 from astrbot.core.star.context import Context
 
 from .lib import store
-from .lib.models import AnyBuild, BuildingTask, ManualBuild, PluginConfig, TaskState
+from .lib.models import (
+    AnyBuild,
+    BuildingTask,
+    ManualBuild,
+    PluginConfig,
+    TimerBuild,
+)
 
 
 class BuildArtifactCloud(Star):
     def __init__(self, context: Context, config: dict | None = None):
-        super().__init__(context, config)
         store.config = PluginConfig.model_validate(config)
         self.config = store.config
         self.tasks: list[BuildingTask] = []
-        self.building: bool = False
+        self.build_finished = util.Signal[BuildingTask]()
+        super().__init__(context, config)
+
+    async def initialize(self):
+        self.eventlooping: bool = True
+        self.el = asyncio.create_task(self.eventloop())
+        self.poll_timing: bool = True
+        self.pt = asyncio.create_task(self.poll_timer())
+
+    async def terminate(self):
+        self.eventlooping = False
+        self.poll_timing = False
 
     @filter.command(
         "list",
@@ -32,7 +50,8 @@ class BuildArtifactCloud(Star):
             yield event.plain_result("当前没有配置任何项目。")
         else:
             listed = "\n".join(
-                f"- {x.name}：{x.description}" for x in self.config.projects
+                f"- {type(x).icon()}{x.name}：{x.description}"
+                for x in self.config.projects
             )
             yield event.plain_result(f"项目列表：\n{listed}")
 
@@ -56,40 +75,62 @@ class BuildArtifactCloud(Star):
                 f"不存在名为“{project}”的已配置项目，请使用list命令查看"
             )
             return
-        # 创建任务加入队列
-        task = BuildingTask(
-            project=prj,
-            id=uuid.uuid4(),
-            spawn=time.time(),
-            state=TaskState.QUEUED,
-        )
-        self.tasks.append(task)
-        # 把回复用户的工作全权交给用户调用命令的地方，事件循环和任务和这个进行一个解耦
-        # 开始事件循环，如果已经正在循环了他会自己退出
-        async for i in self.eventloop():
-            match i:
-                # 迭代出字符串是日志，返回给用户
-                case str():
-                    yield event.plain_result(i)
-                # 迭代出文件地址和文件名，发送产物
-                case (fp, fn):
-                    yield event.chain_result([File(file=fp, name=fn)])
+        if not prj.enable:
+            yield event.plain_result("💔 该任务已被禁用")
+        match prj:
+            case ManualBuild():
+                asyncio.create_task(self.task(prj, event.unified_msg_origin))
+            case TimerBuild():
+                if self.config.allow_call_timer:
+                    asyncio.create_task(self.task(prj, event.unified_msg_origin))
+                else:
+                    yield event.plain_result("💔 定时构建任务不可以被手动调用")
 
     async def eventloop(self):
-        if self.building:
-            return
-        self.building = True
-        # 重复直到清空任务队列
-        while len(self.tasks) > 0:
-            task = self.tasks.pop()
-            match task.project:
-                case ManualBuild():
-                    # 把任务过程迭代出的输出再迭代出去
-                    async for i in task.run():
-                        yield i
-            # 给1秒的冷却，防止卡死主事件循环
-            await asyncio.sleep(1)
-        self.building = False
+        while self.eventlooping:
+            if len(self.tasks) > 0:
+                task = self.tasks.pop()
+                async for record in task.run():
+                    match record:
+                        case str():
+                            await self.context.send_message(
+                                task.caller_session,
+                                MessageChain([Plain(record)]),
+                            )
+                        case (fp, fn):
+                            await self.context.send_message(
+                                task.caller_session,
+                                MessageChain([File(file=fp, name=fn)]),
+                            )
+                    self.build_finished.emit(task)
+            await asyncio.sleep(self.config.eventloop_gap)
+
+    async def poll_timer(self):
+        while self.poll_timing:
+            for project in self.config.projects:
+                match project:
+                    case TimerBuild():
+                        can = True
+                        if not project.enable:
+                            can = False
+                        for task in self.tasks:
+                            if task.project == project:
+                                can = False
+                                break
+                        if can and project.is_cooldowned():
+                            asyncio.create_task(self.task(project, project.session))
+            await asyncio.sleep(self.config.timer_gap)
+
+    async def task(self, project: AnyBuild, session: str):
+        task = BuildingTask(
+            project=project,
+            id=uuid.uuid4(),
+            spawn=time.time(),
+            caller_session=session,
+        )
+        self.tasks.append(task)
+        while await self.build_finished.connect() != task:
+            pass
 
     def get_project(self, project: str) -> AnyBuild | None:
         for i in self.config.projects:
