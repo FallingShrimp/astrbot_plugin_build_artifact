@@ -103,7 +103,8 @@
                     },
                     "session": {
                         "type": "string",
-                        "description": "会话ID"
+                        "description": "会话ID",
+                        "hint": "通过/sid获取UMO字符串"
                     }
                 }
             }
