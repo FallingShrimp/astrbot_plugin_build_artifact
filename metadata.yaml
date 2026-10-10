@@ -1,0 +1,6 @@
+name: astrbot_plugin_build_artifact
+display_name: 实时云构建
+desc: 为不会使用Github Actions的群友提供云构建方案。
+version: v1.0.0
+author: 陨落基围虾
+repo: https://github.com/FallingShrimp/astrbot_plugin_build_artifact.git

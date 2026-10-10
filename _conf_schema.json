@@ -1,0 +1,100 @@
+{
+    "projects": {
+        "description": "项目列表",
+        "type": "template_list",
+        "templates": {
+            "manual": {
+                "name": "触发构建",
+                "hint": "用户手动触发构建，将产物发送到群里",
+                "items": {
+                    "name": {
+                        "type": "string",
+                        "description": "项目名称",
+                        "default": "114514"
+                    },
+                    "description": {
+                        "type": "text",
+                        "description": "项目介绍",
+                        "default": "1919810"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "工作目录",
+                        "hint": "必填，插件加载阶段会验证是否目录有效"
+                    },
+                    "build": {
+                        "type": "text",
+                        "description": "构建命令",
+                        "default": "pnpm build"
+                    },
+                    "dist": {
+                        "type": "string",
+                        "description": "产物的目录",
+                        "hint": "如Node项目的dist目录",
+                        "default": "dist"
+                    },
+                    "compress": {
+                        "type": "bool",
+                        "description": "是否压缩",
+                        "hint": "推荐压缩，防止一次性发太多文件到群里刷屏",
+                        "default": true
+                    },
+                    "allow_parallax": {
+                        "type": "bool",
+                        "description": "是否允许并行任务",
+                        "hint": "两个群友同时触发同一个任务是没必要的",
+                        "default": false
+                    }
+                }
+            },
+            "cron": {
+                "name": "定时推送",
+                "hint": "服务器定时执行一次构建，自动推送到指定会话",
+                "items": {
+                    "name": {
+                        "type": "string",
+                        "description": "项目名称",
+                        "default": "114514"
+                    },
+                    "description": {
+                        "type": "text",
+                        "description": "项目介绍",
+                        "default": "1919810"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "工作目录",
+                        "hint": "必填，插件加载阶段会验证是否目录有效"
+                    },
+                    "build": {
+                        "type": "text",
+                        "description": "构建命令",
+                        "default": "pnpm build"
+                    },
+                    "dist": {
+                        "type": "string",
+                        "description": "产物的目录",
+                        "hint": "如Node项目的dist目录",
+                        "default": "dist"
+                    },
+                    "compress": {
+                        "type": "bool",
+                        "description": "是否压缩",
+                        "hint": "推荐压缩，防止一次性发太多文件到群里刷屏",
+                        "default": true
+                    },
+                    "gap": {
+                        "type": "float",
+                        "description": "定时间隔",
+                        "hint": "毫秒数，从一次构建完成后开始计时",
+                        "default": 86400000
+                    },
+                    "session": {
+                        "type": "string",
+                        "description": "会话ID"
+                    }
+                }
+            }
+        }
+    }
+}
